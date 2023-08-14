@@ -1,1 +1,1 @@
-# global-trend-following-system
+# Global Trend Following System
