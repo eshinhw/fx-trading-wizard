@@ -1,1 +1,1 @@
-# Optimal Trend Following System
+# Ultimate Trend Following System
