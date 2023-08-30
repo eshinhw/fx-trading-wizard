@@ -1,1 +1,1 @@
-# Versatile Trend Following System
+# Optimal Trend Following System
