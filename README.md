@@ -1,6 +1,6 @@
 <div align="center">
 
-  ![logo](https://github.com/eshinhw/oanda-trading-system/assets/41933169/2625e502-37ff-4402-a5e3-9dea81c44eb2)
+  ![logo](https://github.com/eshinhw/fx-trend-following-system/assets/41933169/4a2062ec-8c58-4ada-9db2-437b7256d8c6)
 
 </div>
 
