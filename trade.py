@@ -1,9 +1,6 @@
 import os
-import time
-import datetime as dt
-from pprint import pprint
 from oanda import Oanda
-from config import API_KEY, TF_ACCOUNT
+from config import API_KEY, ACCOUNT_NUM
 
 
 # Login
@@ -11,7 +8,7 @@ from config import API_KEY, TF_ACCOUNT
 if os.name == "nt":
     oanda = Oanda(API_OANDA, CROSSOVER_ACCT)
 if os.name == "posix":
-    oanda = Oanda(API_KEY, TF_ACCOUNT)
+    oanda = Oanda(API_KEY, ACCOUNT_NUM)
 
 OPEN_ORDERS = oanda.get_order_list()
 OPEN_TRADES = oanda.get_trade_list()
@@ -26,8 +23,6 @@ INTERVAL = "D"
 MA_LAGGING_PERIOD = -3
 SL_PERCENT = 0.025
 RISK_PER_TRADE = 0.02
-
-# open trades
 
 
 def bullish_crossover_test(symbol):
@@ -62,7 +57,8 @@ def bearish_crossover_test(symbol):
     return prev_sma > prev_lma and curr_sma < curr_lma
 
 
-def open_trades(symbol):
+def entry(symbol):
+    print(f"Testing MA Crossover for {symbol}")
     try:
         # bullish cross over --> long
         if bullish_crossover_test(symbol):
@@ -96,10 +92,9 @@ def open_trades(symbol):
         print(e)
 
 
-if __name__ == "__main__":
-    # open_trades('EURUSD')
-    # print("Run Successfully --> " + time.ctime())
+# if __name__ == "__main__":
+#     # open_trades('EURUSD')
+#     # print("Run Successfully --> " + time.ctime())
 
-    o = Oanda(API_KEY, TF_ACCOUNT)
-    print(o.compute_moving_average("EUR_USD", 20))
-    print(o.calculate_MA("EUR_USD", 20, "D"))
+#     o = Oanda(API_KEY, ACCOUNT_NUM)
+#     # print(o.calculate_MA("EUR_USD", 20, "D"))
