@@ -3,4 +3,4 @@ import configparser
 config = configparser.ConfigParser()
 config.read("config.ini")
 API_KEY = config["CREDENTIAL"]["API"]
-TF_ACCOUNT = config["TREND_FOLLOWING"]["TF_ACCOUNT"]
+ACCOUNT_NUM = config["CREDENTIAL"]["ACCOUNT_NUM"]
