@@ -1,6 +1,8 @@
 import os
 
 import numpy as np
+import time
+from tqdm import tqdm
 
 from config import ACCOUNT_NUM, ACCOUNT_CURRENCY, API_KEY
 from config import SMA, LMA, INTERVAL, SL_PERCENT, RISK_PER_TRADE
@@ -39,13 +41,11 @@ def check_crossover(symbol):
 
     prices["crossover"] = np.vectorize(find_crossover)(prices[sma], prices["50MA_lagged"], prices[lma])
 
-    print(prices)
-
     return prices["crossover"].iloc[-1]
 
 
 def entry(symbol):
-    print(f"Testing MA Crossover for {symbol}")
+    trades = []
     try:
         # bullish cross over --> long
         if check_crossover(symbol) == "bullish":
@@ -55,7 +55,8 @@ def entry(symbol):
 
             if (symbol not in SYMBOLS_TRADES) and (symbol not in SYMBOLS_ORDERS):
                 oanda.create_limit_order(symbol, entry, stop, RISK_PER_TRADE)
-                print(f"Long Order Placed [{symbol}] @ ENTRY: {entry} SL: {stop}")
+                notify = f"Long Order Placed [{symbol}] @ ENTRY: {entry} SL: {stop}"
+                trades.append(notify)
             else:
                 # there exists a trade in opposite direction which must be closed first.
                 oanda.close_open_trade(symbol)
@@ -69,7 +70,8 @@ def entry(symbol):
 
             if (symbol not in SYMBOLS_TRADES) and (symbol not in SYMBOLS_ORDERS):
                 oanda.create_limit_order(symbol, entry, stop, RISK_PER_TRADE)
-                print(f"Short Order Placed [{symbol}] @ ENTRY: {entry} SL: {stop}")
+                notify = f"Short Order Placed [{symbol}] @ ENTRY: {entry} SL: {stop}"
+                trades.append(notify)
             else:
                 # there exists a trade in opposite direction which must be closed first.
                 oanda.close_open_trade(symbol)
@@ -81,7 +83,7 @@ def entry(symbol):
 
 if __name__ == "__main__":
     instruments = MAJOR + EUR_CROSS + JPY_CROSS + GBP_CROSS + OTHER_CROSS
-    print(instruments)
+    # print(instruments)
     # check_crossover("EUR_USD")
     # print(INSTRUMENTS)
     # print(oanda.calculate_unit_size("EUR_USD", 1.06319, 1.05010, 0.02))
@@ -91,5 +93,9 @@ if __name__ == "__main__":
     # print(oanda.calculate_unit_size("CAD_CHF", 0.66069, 0.67701, 0.02))
     # print(oanda.calculate_unit_size("CAD_JPY", 106.53, 105.02, 0.02))
     # print(oanda.cal_position_size("EURUSD", RISK_PER_TRADE, 1.06))
-
-    entry(instruments[0])
+    count = 0
+    for i in range(len(instruments)):
+        entry(instruments[i])
+        time.sleep(2)
+        count += 1
+        print(f"{count} / {len(instruments)}")
