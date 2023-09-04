@@ -1,39 +1,63 @@
-import pandas as pd
 import datetime as dt
-from oandapyV20 import API
-import oandapyV20.endpoints.pricing as pricing
+from typing import Dict, List, Tuple
+
 import oandapyV20.endpoints.accounts as accounts
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.orders as orders
+import oandapyV20.endpoints.pricing as pricing
 import oandapyV20.endpoints.trades as trades
-
-from typing import List, Dict, Tuple
+import pandas as pd
+from oandapyV20 import API
 
 
 class Oanda:
-    def __init__(self, api_key, accountID) -> None:
+    def __init__(self, api_key, accountID, account_currency) -> None:
+        """Initialize Oanda instance for Oanda API access
+
+        Args:
+            api_key (str): API key generated from Oanda.com
+            accountID (str): Account number used for trading
+        """
         self.client = API(api_key)
         self.acctID = accountID
+        self.account_currency = account_currency
 
     def get_balance(self):
+        """Get account balance
+
+        Returns:
+            float: account balance value
+        """
+
         resp = self.client.request(accounts.AccountSummary(self.acctID))
         return float(resp["account"]["balance"])
 
-    def get_ohlc(self, symbol: str, count: int, interval: str):
+    def get_prices(self, symbol: str, count: int, interval: str):
+        """Get historical price data for the given symbol
+
+        Args:
+            symbol (str): Instrument symbol
+            count (int): Number of price bars
+            interval (str): Timeframe interval
+
+        Returns:
+            DataFrame: price data in DataFrame
+        """
+
         r = instruments.InstrumentsCandles(instrument=symbol, params={"count": count, "granularity": interval})
         resp = self.client.request(r)
 
-        data = {"Date": [], "Open": [], "High": [], "Low": [], "Close": []}
+        prices = {"Date": [], "Open": [], "High": [], "Low": [], "Close": []}
 
         for candle in resp["candles"]:
             date = candle["time"].replace("T", " ")[: candle["time"].index(".")]
-            data["Date"].append(dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S"))
-            data["Open"].append(float(candle["mid"]["o"]))
-            data["High"].append(float(candle["mid"]["h"]))
-            data["Low"].append(float(candle["mid"]["l"]))
-            data["Close"].append(float(candle["mid"]["c"]))
+            prices["Date"].append(dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S"))
+            prices["Open"].append(float(candle["mid"]["o"]))
+            prices["High"].append(float(candle["mid"]["h"]))
+            prices["Low"].append(float(candle["mid"]["l"]))
+            prices["Close"].append(float(candle["mid"]["c"]))
 
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(prices)
         df.set_index("Date", inplace=True)
         return df
 
@@ -61,12 +85,12 @@ class Oanda:
         return (ask_price, bid_price)
 
     def calculate_MA(self, symbol: str, period: int, interval: str):
-        df = self.get_ohlc(symbol, period + 3, interval)
+        df = self.get_prices(symbol, period + 3, interval)
         ma = df["Close"].rolling(period).mean().iloc[-1]
         return ma
 
     def calculate_ATR(self, symbol: str, period: int, interval: str):
-        df = self.get_ohlc(symbol, period + 3, interval)
+        df = self.get_prices(symbol, period + 3, interval)
         # https://stackoverflow.com/questions/40256338/calculating-average-true-range-atr-on-ohlc-data-with-python
         # https://stackoverflow.com/questions/35753914/calculating-average-true-range-column-in-pandas-dataframe
         df["RangeOne"] = abs(df["High"] - df["Low"])
@@ -77,28 +101,93 @@ class Oanda:
         return df["ATR"].iloc[-1]
 
     def calculate_prev_min_low(self, symbol: str, period: int, interval: str):
-        df = self.get_ohlc(symbol, period, interval)
+        df = self.get_prices(symbol, period, interval)
         return min(df["Low"])
 
     def calculate_prev_max_high(self, symbol: str, period: int, interval: str):
-        df = self.get_ohlc(symbol, period, interval)
+        df = self.get_prices(symbol, period, interval)
         return max(df["High"])
 
     def calculate_unit_size(self, symbol: str, entry: float, stop: float, risk: float):
         # https://www.youtube.com/watch?v=bNEpAOOulwk&ab_channel=KarenFoo
 
         account_balance = self.get_balance()
-        decimal = 4
-        multiple = 10000
+        print(account_balance)
+        first_currency = symbol[0:3]
+        second_currency = symbol[4:7]
 
-        usdcad = self.get_current_ask_bid_price("USD_CAD")[0]
-        us_dolloar_per_trade = (account_balance * risk) / usdcad
-        entry = round(entry, decimal)
-        stop = round(stop, decimal)
-        # sl_pips NOT in fractions but in decimal by multiplying multiple
-        stop_loss_pips = round(abs(entry - stop), decimal + 1) * multiple
-        unit_size = round(us_dolloar_per_trade / stop_loss_pips * multiple, 0)
-        return (unit_size, entry, stop, stop_loss_pips)
+        if second_currency == "JPY":
+            decimal = 2
+            multiple = 100
+            cadjpy = self.get_current_ask_bid_price("CAD_JPY")[0]
+            cad_dolloar_per_trade = (account_balance * risk) * cadjpy
+            entry = round(entry, decimal)
+            stop = round(stop, decimal)
+            # sl_pips NOT in fractions but in decimal by multiplying multiple
+            stop_loss_pips = round(abs(entry - stop), decimal + 1) * multiple
+            unit_size = round((cad_dolloar_per_trade / stop_loss_pips) * multiple, 0)
+            return (unit_size, entry, stop, stop_loss_pips)
+
+        if second_currency == "CHF":
+            decimal = 4
+            multiple = 10000
+            cadchf = self.get_current_ask_bid_price("CAD_CHF")[0]
+            cad_dolloar_per_trade = (account_balance * risk) * cadchf
+            entry = round(entry, decimal)
+            stop = round(stop, decimal)
+            # sl_pips NOT in fractions but in decimal by multiplying multiple
+            stop_loss_pips = round(abs(entry - stop), decimal + 1) * multiple
+            unit_size = round((cad_dolloar_per_trade / stop_loss_pips) * multiple, 0)
+            return (unit_size, entry, stop, stop_loss_pips)
+
+        if second_currency == "AUD":
+            decimal = 4
+            multiple = 10000
+            audcad = self.get_current_ask_bid_price("AUD_CAD")[0]
+            aud_dolloar_per_trade = (account_balance * risk) / audcad
+            entry = round(entry, decimal)
+            stop = round(stop, decimal)
+            # sl_pips NOT in fractions but in decimal by multiplying multiple
+            stop_loss_pips = round(abs(entry - stop), decimal + 1) * multiple
+            unit_size = round((aud_dolloar_per_trade / stop_loss_pips) * multiple, 0)
+            return (unit_size, entry, stop, stop_loss_pips)
+
+        if second_currency == "NZD":
+            decimal = 4
+            multiple = 10000
+            nzdcad = self.get_current_ask_bid_price("NZD_CAD")[0]
+            nzd_dolloar_per_trade = (account_balance * risk) / nzdcad
+            entry = round(entry, decimal)
+            stop = round(stop, decimal)
+            # sl_pips NOT in fractions but in decimal by multiplying multiple
+            stop_loss_pips = round(abs(entry - stop), decimal + 1) * multiple
+            unit_size = round((nzd_dolloar_per_trade / stop_loss_pips) * multiple, 0)
+            return (unit_size, entry, stop, stop_loss_pips)
+
+        if second_currency == "CAD":
+            decimal = 4
+            multiple = 10000
+            usdcad = self.get_current_ask_bid_price("USD_CAD")[0]
+            cad_dolloar_per_trade = account_balance * risk
+            entry = round(entry, decimal)
+            stop = round(stop, decimal)
+            # sl_pips NOT in fractions but in decimal by multiplying multiple
+            stop_loss_pips = round(abs(entry - stop), decimal + 1) * multiple
+            unit_size = round((cad_dolloar_per_trade / stop_loss_pips) * multiple, 0)
+            return (unit_size, entry, stop, stop_loss_pips)
+
+        if second_currency == "USD":
+            decimal = 4
+            multiple = 10000
+            usdcad = self.get_current_ask_bid_price("USD_CAD")[0]
+            print((account_balance * risk) / usdcad)
+            us_dolloar_per_trade = (account_balance * risk) / usdcad
+            entry = round(entry, decimal)
+            stop = round(stop, decimal)
+            # sl_pips NOT in fractions but in decimal by multiplying multiple
+            stop_loss_pips = round(abs(entry - stop), decimal + 1) * multiple
+            unit_size = round((us_dolloar_per_trade / stop_loss_pips) * multiple, 0)
+            return (unit_size, entry, stop, stop_loss_pips)
 
     def update_order_trade_status(self):
         trade_list = self.get_trade_list()
