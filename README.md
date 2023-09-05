@@ -12,6 +12,23 @@
   
 </div>
 
-- Traditional Trend Following System
-- Momentum
-- Moving Averages Alignment
+## Trading Instruments
+
+- Major FX pairs: EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, NZDUSD
+- Minor pairs:
+
+## Trading Logics
+
+### Long Position
+
+- Positive momemtum
+- 50SMA above 200SMA
+- Entry: 55 days high breakout
+- Stop: 2 * ATR or breakout of 20 days low
+
+### Short Position
+
+- Negative momentum
+- 50SMA below 200SMA
+- Entry: 55 days low breakout
+- Stop: 2 * ATR or breakout of 20 days high
