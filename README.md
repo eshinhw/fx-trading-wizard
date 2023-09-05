@@ -12,3 +12,6 @@
   
 </div>
 
+- Traditional Trend Following System
+- Momentum
+- Moving Averages Alignment
